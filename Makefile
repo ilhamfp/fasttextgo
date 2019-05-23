@@ -12,7 +12,7 @@ OBJS = args.o matrix.o dictionary.o loss.o productquantizer.o densematrix.o quan
 INCLUDES = -I.
 
 opt: CXXFLAGS += -O3 -funroll-loops
-opt: fasttext
+opt: build
 
 coverage: CXXFLAGS += -O0 -fno-inline -fprofile-arcs --coverage
 coverage: fasttext
