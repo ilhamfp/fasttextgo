@@ -2,8 +2,9 @@ package fasttextgo
 
 // #cgo LDFLAGS: -L${SRCDIR} -lfasttext -lstdc++ -lm
 // #include <stdlib.h>
-// void load_model(char *name, char *path);
+// void load_model(char *name, char *pathZ);
 // int predict(char* name, char *query, float *prob, char **buf, int *count, int k, int buf_sz);
+// int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *count, int buf_sz);
 import "C"
 import (
 	"errors"
@@ -54,4 +55,40 @@ func Predict(name, sentence string, topN int) (map[string]float32, error) {
 	}
 
 	return result, nil
+}
+
+func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
+	resultLabel := make([]string, 0, 6)
+	resultScore := make([]float32, 0, 6)
+
+	//add new line to sentence, due to the fasttext assumption
+	sentence += "\n"
+
+	cprob := make([]C.float, 6, 6)
+	buf := make([]*C.char, 6, 6)
+	var resultCnt C.int
+	for i := 0; i < 6; i++ {
+		buf[i] = (*C.char)(C.calloc(64, 1))
+	}
+
+	np := C.CString(name)
+	data := C.CString(sentence)
+
+	ret := C.predictMaxIntention(np, data, &cprob[0], &buf[0], &resultCnt, 64)
+	if ret != 0 {
+		return resultLabel, resultScore, errors.New("error in prediction")
+	} else {
+		for i := 0; i < int(resultCnt); i++ {
+			resultLabel = append(resultLabel, C.GoString(buf[i]))
+			resultScore = append(resultScore, float32(cprob[i]))
+		}
+	}
+	//free the memory used by C
+	C.free(unsafe.Pointer(data))
+	C.free(unsafe.Pointer(np))
+	for i := 0; i < 6; i++ {
+		C.free(unsafe.Pointer(buf[i]))
+	}
+
+	return resultLabel, resultScore, nil
 }
