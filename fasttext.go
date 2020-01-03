@@ -68,13 +68,13 @@ func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
 	buf := make([]*C.char, 6, 6)
 	var resultCnt C.int
 	for i := 0; i < 6; i++ {
-		buf[i] = (*C.char)(C.calloc(64, 1))
+		buf[i] = (*C.char)(C.calloc(128, 1))
 	}
 
 	np := C.CString(name)
 	data := C.CString(sentence)
 
-	ret := C.predictMaxIntention(np, data, &cprob[0], &buf[0], &resultCnt, 64)
+	ret := C.predictMaxIntention(np, data, &cprob[0], &buf[0], &resultCnt, 128)
 	if ret != 0 {
 		return resultLabel, resultScore, errors.New("error in prediction")
 	} else {
