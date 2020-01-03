@@ -816,7 +816,7 @@ void FastText::train(const Args& args) {
   output_ = createTrainOutputMatrix();
   auto loss = createLoss(output_);
   if (args_->loss == loss_name::intentionhs) {
-    std::vector<std::pair<std::string, int64_t>> labelCounts = loss->getLabelCounts();
+    std::vector<std::pair<std::vector<std::string>, int64_t>> labelCounts = loss->getLabelCounts();
     dict_->loadLabelOrder(labelCounts);
   }
   bool normalizeGradient = (args_->model == model_name::sup);

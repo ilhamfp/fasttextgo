@@ -11,6 +11,10 @@ import (
 	"unsafe"
 )
 
+const (
+	NUM_OF_LABELS = 7
+)
+
 // LoadModel - load FastText model
 func LoadModel(name, path string) {
 	p1 := C.CString(name)
@@ -58,14 +62,14 @@ func Predict(name, sentence string, topN int) (map[string]float32, error) {
 }
 
 func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
-	resultLabel := make([]string, 0, 6)
-	resultScore := make([]float32, 0, 6)
+	resultLabel := make([]string, 0, NUM_OF_LABELS)
+	resultScore := make([]float32, 0, NUM_OF_LABELS)
 
 	//add new line to sentence, due to the fasttext assumption
 	sentence += "\n"
 
-	cprob := make([]C.float, 6, 6)
-	buf := make([]*C.char, 6, 6)
+	cprob := make([]C.float, NUM_OF_LABELS, NUM_OF_LABELS)
+	buf := make([]*C.char, NUM_OF_LABELS, NUM_OF_LABELS)
 	var resultCnt C.int
 	for i := 0; i < 6; i++ {
 		buf[i] = (*C.char)(C.calloc(128, 1))
@@ -86,7 +90,7 @@ func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
 	//free the memory used by C
 	C.free(unsafe.Pointer(data))
 	C.free(unsafe.Pointer(np))
-	for i := 0; i < 6; i++ {
+	for i := 0; i < NUM_OF_LABELS; i++ {
 		C.free(unsafe.Pointer(buf[i]))
 	}
 

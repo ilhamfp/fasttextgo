@@ -53,7 +53,7 @@ class Loss {
       real /*threshold*/,
       Predictions& /*heap*/,
       Model::State& /*state*/) const;
-  virtual std::vector<std::pair<std::string, int64_t>> getLabelCounts();
+  virtual std::vector<std::pair<std::vector<std::string>, int64_t>> getLabelCounts();
   virtual void save(std::ostream&) const;
   virtual void maxPredict(
       IntentionPredictions& predictions,
@@ -172,6 +172,7 @@ class IntentionHierarchicalSoftmaxLoss : public BinaryLogisticLoss {
   std::vector<std::vector<bool>> codes_;
   std::vector<Node> tree_;
   int32_t osz_;
+  int32_t nlabels_;
   int32_t level_;
   Node buildSubTree(std::vector<Node*>& nodes, int32_t level);
   void buildTree(const std::vector<std::pair<std::string, int64_t>>& labelCounts, const std::string hfiles);
@@ -211,7 +212,7 @@ public:
       real threshold,
       Predictions& heap,
       Model::State& state) const override;
-  std::vector<std::pair<std::string, int64_t>> getLabelCounts() override;
+  std::vector<std::pair<std::vector<std::string>, int64_t>> getLabelCounts() override;
   void maxPredict(
       IntentionPredictions& predictions,
       Model::State& state) const override;

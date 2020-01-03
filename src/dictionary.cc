@@ -140,7 +140,7 @@ int32_t Dictionary::getId(const std::string& w) const {
 
 entry_type Dictionary::getType(int32_t id) const {
   assert(id >= 0);
-  assert(id < size_);
+//  assert(id < size_);
   return words_[id].type;
 }
 
@@ -260,16 +260,25 @@ void Dictionary::readFromFile(std::istream& in) {
   }
 }
 
-void Dictionary::loadLabelOrder(std::vector<std::pair<std::string, int64_t>> labelCounts) {
+void Dictionary::loadLabelOrder(std::vector<std::pair<std::vector<std::string>, int64_t>> labelCounts) {
+//  std::cout << "Before loading\n\tsize of nwords_: " << nwords_ << "\n\tsize of words_" << words_.size() << std::endl;
+  words_.resize(nwords_ + labelCounts.size());
   int32_t id = nwords_;
   for (int32_t i = 0; i < labelCounts.size(); i++) {
-    std::string& label = labelCounts[i].first;
+    std::vector<std::string>& labels = labelCounts[i].first;
     int32_t count = labelCounts[i].second;
-    int32_t h = find(label);
-    words_[id].word = label;
+    int32_t h = find(labels[0]);
+    words_[id].word = labels[0];
     words_[id].count = count;
-    word2int_[h] = id++;
+    words_[id].type = entry_type::label;
+    word2int_[h] = id;
+    for (int32_t j = 1; j < labels.size(); j++) {
+      int32_t h = find(labels[j]);
+      word2int_[h] = id;
+    }
+    id++;
   }
+//  std::cout << "After loading\n\tsize of nwords_: " << nwords_ << "\n\tsize of words_" << words_.size() << std::endl;
 }
 
 void Dictionary::threshold(int64_t t, int64_t tl) {

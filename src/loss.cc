@@ -102,8 +102,8 @@ void Loss::maxPredict(
   return;
 }
 
-std::vector<std::pair<std::string, int64_t>> Loss::getLabelCounts() {
-  return std::vector<std::pair<std::string, int64_t>> {};
+std::vector<std::pair<std::vector<std::string>, int64_t>> Loss::getLabelCounts() {
+  return std::vector<std::pair<std::vector<std::string>, int64_t>> {};
 }
 
 void Loss::save(std::ostream&) const {
@@ -339,7 +339,8 @@ IntentionHierarchicalSoftmaxLoss::IntentionHierarchicalSoftmaxLoss(
       codes_(),
       tree_(),
       level_(),
-      osz_() {
+      osz_(),
+      nlabels_() {
   loadTree(in);
 }
 
@@ -391,8 +392,12 @@ IntentionHierarchicalSoftmaxLoss::Node IntentionHierarchicalSoftmaxLoss::buildSu
 void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std::string, int64_t>>& labelCounts,
         const std::string hfiles) {
   std::unordered_map<std::string, Node> prev_mapping;
-  for (int32_t i = 0; i < osz_; i++) {
+  osz_ = 0;
+  for (int32_t i = 0; i < labelCounts.size(); i++) {
     const std::string& label = labelCounts[i].first;
+    if (label.find("L-1") == std::string::npos) {
+      continue;
+    }
     Node node = Node();
     node.slevel = -1;
     node.elevel = 0;
@@ -403,7 +408,9 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     node.isLabel = true;
     node.name.push_back(label);
     prev_mapping[label] = node;
+    osz_++;
   }
+//  std::cout << "osz_ " << osz_ << std::endl;
   std::stringstream ss(hfiles);
   std::string file;
   int32_t level = 0;
@@ -456,8 +463,51 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
   });
   Node parentNode = buildSubTree(nodes, level);
   tree_.push_back(parentNode);
-  int32_t nonLeaf = -1;
+//  std::cout << "Tree built with " << tree_.size() << " nodes" << std::endl;
+  int32_t nonLabel = -1;
+  int32_t labelCount = 0;
   for (int32_t i = 0; i < tree_.size(); i++) {
+    assert(tree_[i].left != i);
+    assert(tree_[i].right != i);
+    if (tree_[i].isLabel) {
+      labelCount++;
+      if (nonLabel != -1) {
+        std::iter_swap(tree_.begin() + i, tree_.begin() + nonLabel);
+        if (tree_[i].left != -1) {
+          tree_[tree_[i].left].parent = i;
+        }
+        if (tree_[i].right != -1) {
+          tree_[tree_[i].right].parent = i;
+        }
+        if (tree_[i].parent == i) {
+          tree_[i].parent = nonLabel;
+        }
+        if (tree_[i].binary) {
+          tree_[tree_[i].parent].right = i;
+        } else {
+          tree_[tree_[i].parent].left = i;
+        }
+
+        if (tree_[nonLabel].left != -1) {
+          tree_[tree_[nonLabel].left].parent = nonLabel;
+        }
+        if (tree_[nonLabel].right != -1) {
+          tree_[tree_[nonLabel].right].parent = nonLabel;
+        }
+        if (tree_[nonLabel].binary) {
+          tree_[tree_[nonLabel].parent].right = nonLabel;
+        } else {
+          tree_[tree_[nonLabel].parent].left = nonLabel;
+        }
+        nonLabel++;
+      }
+    } else if (nonLabel == -1) {
+      nonLabel = i;
+    }
+  }
+  nlabels_ = labelCount;
+  int32_t nonLeaf = -1;
+  for (int32_t i = 0; i < labelCount; i++) {
     if (tree_[i].left == -1 && tree_[i].right == -1) {
       if (nonLeaf != -1) {
         std::iter_swap(tree_.begin() + i, tree_.begin() + nonLeaf);
@@ -490,7 +540,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
       nonLeaf = i;
     }
   }
-  for (int32_t i = 0; i < osz_; i++) {
+  for (int32_t i = 0; i < labelCount; i++) {
     std::vector<int32_t> path;
     std::vector<bool> code;
     int32_t j = i;
@@ -503,6 +553,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     codes_.push_back(code);
   }
   level_ = level;
+//  std::cout << "Done building tree, len of paths_: " << paths_.size() << std::endl;
 }
 
 real IntentionHierarchicalSoftmaxLoss::forward(
@@ -605,10 +656,10 @@ void IntentionHierarchicalSoftmaxLoss::dfs(
   dfs(k, threshold, tree_[node].right, score + std_log(f), heap, hidden);
 }
 
-std::vector<std::pair<std::string, int64_t>> IntentionHierarchicalSoftmaxLoss::getLabelCounts() {
-  std::vector<std::pair<std::string, int64_t>> labelCounts;
-  for (int32_t i = 0; i < osz_; i++) {
-    std::pair<std::string, int64_t> pair = std::make_pair(tree_[i].name[0], tree_[i].count);
+std::vector<std::pair<std::vector<std::string>, int64_t>> IntentionHierarchicalSoftmaxLoss::getLabelCounts() {
+  std::vector<std::pair<std::vector<std::string>, int64_t>> labelCounts;
+  for (int32_t i = 0; i < nlabels_; i++) {
+    std::pair<std::vector<std::string>, int64_t> pair = std::make_pair(tree_[i].name, tree_[i].count);
     labelCounts.push_back(pair);
   }
   return labelCounts;
@@ -617,6 +668,7 @@ std::vector<std::pair<std::string, int64_t>> IntentionHierarchicalSoftmaxLoss::g
 void IntentionHierarchicalSoftmaxLoss::save(std::ostream& out) const {
   out.write((char*)&level_, sizeof(int32_t));
   out.write((char*)&osz_, sizeof(int32_t));
+  out.write((char*)&nlabels_, sizeof(int32_t));
   for (auto node: tree_) {
     out.write((char *) &node.slevel, sizeof(int32_t));
     out.write((char *) &node.elevel, sizeof(int32_t));
@@ -636,6 +688,7 @@ void IntentionHierarchicalSoftmaxLoss::save(std::ostream& out) const {
 void IntentionHierarchicalSoftmaxLoss::loadTree(std::istream& in) {
   in.read((char*)&level_, sizeof(int32_t));
   in.read((char*)&osz_, sizeof(int32_t));
+  in.read((char*)&nlabels_, sizeof(int32_t));
   for (int32_t i = 0; i < 2 * osz_ - 1; i++) {
     Node n = Node();
     in.read((char*)&n.slevel, sizeof(int32_t));
@@ -657,7 +710,7 @@ void IntentionHierarchicalSoftmaxLoss::loadTree(std::istream& in) {
     }
     tree_.push_back(n);
   }
-  for (int32_t i = 0; i < osz_; i++) {
+  for (int32_t i = 0; i < nlabels_; i++) {
     std::vector<int32_t> path;
     std::vector<bool> code;
     int32_t j = i;
