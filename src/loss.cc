@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_map>
 #include <utility>
 
@@ -417,6 +418,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     }
     std::string line;
     std::string ignore;
+    int32_t mapped_children_count = 0;
     while (std::getline(ifs, line)) {
       std::stringstream lineStream(line);
       std::string parent, children;
@@ -431,6 +433,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
           continue;
         }
         nodes.push_back(&prev_mapping.at(child));
+        mapped_children_count++;
       }
       if (nodes.size() == 0) {
         continue;
@@ -444,7 +447,16 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
       parentNode.isLabel = true;
       curr_mapping[parent] = parentNode;
     }
+    if (prev_mapping.size() != mapped_children_count) {
+      std::cerr << "Error: [tree building] there are " << prev_mapping.size() - mapped_children_count << " L" <<
+        level << " nodes without parent" << std::endl;
+      exit(EXIT_FAILURE);
+    }
     prev_mapping = curr_mapping;
+    if (curr_mapping.size() == 0) {
+      std::cerr << "Error: disjointed tree at level " << level << std::endl;
+      exit(EXIT_FAILURE);
+    }
     level++;
   }
   nodes.clear();
@@ -503,6 +515,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     codes_.push_back(code);
   }
   level_ = level;
+  std::cerr << "Number of nodes:  " << tree_.size() << std::endl;
 }
 
 real IntentionHierarchicalSoftmaxLoss::forward(
