@@ -45,7 +45,7 @@ int predict(char* name, char *query, float *prob, char **buf, int *count, int k,
   }
 }
 
-int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *count, int buf_sz) {
+int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *count, int level, int buf_sz) {
   membuf sbuf(query, query + strlen(query));
   std::istream in(&sbuf);
 
@@ -55,6 +55,9 @@ int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *c
 
 		  int i=0;
 		  for (auto it = predictions.cbegin(); it != predictions.cend(); it++) {
+		  	if (i >= level) {
+		  		break;
+		  	}
 		    *(prob+i) = (float) it->first;
 		    strncpy(*(buf+i), it->second.c_str(), buf_sz);
 			i++;

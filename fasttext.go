@@ -4,7 +4,7 @@ package fasttextgo
 // #include <stdlib.h>
 // void load_model(char *name, char *pathZ);
 // int predict(char* name, char *query, float *prob, char **buf, int *count, int k, int buf_sz);
-// int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *count, int buf_sz);
+// int predictMaxIntention(char* name, char *query, float *prob, char **buf, int *count, int level, int buf_sz);
 import "C"
 import (
 	"errors"
@@ -57,24 +57,24 @@ func Predict(name, sentence string, topN int) (map[string]float32, error) {
 	return result, nil
 }
 
-func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
-	resultLabel := make([]string, 0, 6)
-	resultScore := make([]float32, 0, 6)
+func PredictMaxIntention(name, sentence string, level int) ([]string, []float32, error) {
+	resultLabel := make([]string, 0, level)
+	resultScore := make([]float32, 0, level)
 
 	//add new line to sentence, due to the fasttext assumption
 	sentence += "\n"
 
-	cprob := make([]C.float, 6, 6)
-	buf := make([]*C.char, 6, 6)
+	cprob := make([]C.float, level, level)
+	buf := make([]*C.char, level, level)
 	var resultCnt C.int
-	for i := 0; i < 6; i++ {
+	for i := 0; i < level; i++ {
 		buf[i] = (*C.char)(C.calloc(128, 1))
 	}
 
 	np := C.CString(name)
 	data := C.CString(sentence)
 
-	ret := C.predictMaxIntention(np, data, &cprob[0], &buf[0], &resultCnt, 128)
+	ret := C.predictMaxIntention(np, data, &cprob[0], &buf[0], &resultCnt, C.int(level), 128)
 	if ret != 0 {
 		return resultLabel, resultScore, errors.New("error in prediction")
 	} else {
@@ -86,7 +86,7 @@ func PredictMaxIntention(name, sentence string) ([]string, []float32, error) {
 	//free the memory used by C
 	C.free(unsafe.Pointer(data))
 	C.free(unsafe.Pointer(np))
-	for i := 0; i < 6; i++ {
+	for i := 0; i < level; i++ {
 		C.free(unsafe.Pointer(buf[i]))
 	}
 
