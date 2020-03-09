@@ -76,6 +76,14 @@ void Model::predictMaxIntention(
   loss_->maxPredict(heap, state);
 }
 
+void Model::predictMaxIntention(
+        const std::vector<int32_t>& input,
+        Predictions& heap,
+        State& state) const {
+  computeHidden(input, state);
+  loss_->maxPredict(heap, state);
+}
+
 void Model::update(
     const std::vector<int32_t>& input,
     const std::vector<int32_t>& targets,

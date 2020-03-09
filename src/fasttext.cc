@@ -446,6 +446,25 @@ void FastText::test(std::istream& in, int32_t k, real threshold, Meter& meter)
   }
 }
 
+void FastText::testMaxIntention(std::istream& in, Meter& meter)
+    const {
+  std::vector<int32_t> line;
+  std::vector<int32_t> labels;
+  Predictions predictions;
+
+  while (in.peek() != EOF) {
+    line.clear();
+    labels.clear();
+    dict_->getLine(in, line, labels);
+
+    if (!labels.empty() && !line.empty()) {
+      predictions.clear();
+      predictMaxIntention(line, predictions);
+      meter.log(labels, predictions);
+    }
+  }
+}
+
 void FastText::predict(
     int32_t k,
     const std::vector<int32_t>& words,
@@ -464,6 +483,19 @@ void FastText::predict(
 void FastText::predictMaxIntention(
         const std::vector<int32_t>& words,
         IntentionPredictions & predictions) const {
+  if (words.empty()) {
+    return;
+  }
+  Model::State state(args_->dim, dict_->nlabels(), 0);
+  if (args_->model != model_name::sup) {
+    throw std::invalid_argument("Model needs to be supervised for prediction!");
+  }
+  model_->predictMaxIntention(words, predictions, state);
+}
+
+void FastText::predictMaxIntention(
+        const std::vector<int32_t>& words,
+        Predictions& predictions) const {
   if (words.empty()) {
     return;
   }

@@ -58,6 +58,9 @@ class Loss {
   virtual void maxPredict(
       IntentionPredictions& predictions,
       Model::State& state) const;
+  virtual void maxPredict(
+          Predictions& predictions,
+          Model::State& state) const;
 };
 
 class BinaryLogisticLoss : public Loss {
@@ -214,6 +217,9 @@ public:
   std::vector<std::pair<std::string, int64_t>> getLabelCounts() override;
   void maxPredict(
       IntentionPredictions& predictions,
+      Model::State& state) const override;
+  void maxPredict(
+      Predictions& predictions,
       Model::State& state) const override;
   void save(std::ostream&) const override;
 };

@@ -103,6 +103,12 @@ void Loss::maxPredict(
   return;
 }
 
+void Loss::maxPredict(
+      Predictions& predictions,
+      Model::State& state) const {
+  return;
+}
+
 std::vector<std::pair<std::string, int64_t>> Loss::getLabelCounts() {
   return std::vector<std::pair<std::string, int64_t>> {};
 }
@@ -585,6 +591,23 @@ void IntentionHierarchicalSoftmaxLoss::maxPredict(
     }
     level = std::min(level-1, tree_[nodeId].slevel);
   }
+}
+
+void IntentionHierarchicalSoftmaxLoss::maxPredict(
+        Predictions& predictions,
+        Model::State& state) const {
+  int32_t level = level_;
+  int32_t nodeId = 2*osz_-2;
+  real score = 0;
+  Prediction prediction = std::make_pair(-1, -1e15);
+  while (level != -1) {
+    prediction.second = -1e15;
+    max_dfs(nodeId, std_log(1.0), level, &prediction, state.hidden, true);
+    nodeId = prediction.first;
+    score = score + prediction.second;
+    level = std::min(level-1, tree_[nodeId].slevel);
+  }
+  predictions.push_back(std::make_pair(score, nodeId));
 }
 
 void IntentionHierarchicalSoftmaxLoss::dfs(

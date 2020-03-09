@@ -66,6 +66,10 @@ class Model {
           const std::vector<int32_t>& input,
           IntentionPredictions& heap,
           State& state) const;
+  void predictMaxIntention(
+          const std::vector<int32_t>& input,
+          Predictions& heap,
+          State& state) const;
   void update(
       const std::vector<int32_t>& input,
       const std::vector<int32_t>& targets,

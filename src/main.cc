@@ -23,6 +23,8 @@ void printUsage() {
       << "  quantize                quantize a model to reduce the memory usage\n"
       << "  test                    evaluate a supervised classifier\n"
       << "  test-label              print labels with precision and recall scores\n"
+      << "  test-max                evaluate a supervised classifier\n"
+      << "  test-label-max          print labels with precision and recall scores\n"
       << "  predict                 predict most likely labels\n"
       << "  predict-prob            predict most likely labels with probabilities\n"
       << "  predict-max-intention   predict most likely intentions at each level\n"
@@ -51,6 +53,16 @@ void printTestUsage() {
       << std::endl;
 }
 
+void printTestMaxIntentionUsage() {
+  std::cerr
+          << "usage: fasttext test-max-intention <model> <test-data> [<k>] [<th>]\n\n"
+          << "  <model>      model filename\n"
+          << "  <test-data>  test data filename (if -, read from stdin)\n"
+          << "  <k>          (optional; 1 by default) predict top k labels\n"
+          << "  <th>         (optional; 0.0 by default) probability threshold\n"
+          << std::endl;
+}
+
 void printPredictUsage() {
   std::cerr
       << "usage: fasttext predict[-prob] <model> <test-data> [<k>] [<th>]\n\n"
@@ -69,6 +81,16 @@ void printTestLabelUsage() {
       << "  <k>          (optional; 1 by default) predict top k labels\n"
       << "  <th>         (optional; 0.0 by default) probability threshold\n"
       << std::endl;
+}
+
+void printTestLabelMaxIntentionUsage() {
+  std::cerr
+          << "usage: fasttext test-label-max-intention <model> <test-data> [<k>] [<th>]\n\n"
+          << "  <model>      model filename\n"
+          << "  <test-data>  test data filename\n"
+          << "  <k>          (optional; 1 by default) predict top k labels\n"
+          << "  <th>         (optional; 0.0 by default) probability threshold\n"
+          << std::endl;
 }
 
 void printPrintWordVectorsUsage() {
@@ -128,7 +150,6 @@ void printDumpUsage() {
 
 void test(const std::vector<std::string>& args) {
   bool perLabel = args[1] == "test-label";
-  bool intention = args[1] == "test-max-intention";
 
   if (args.size() < 4 || args.size() > 6) {
     perLabel ? printTestLabelUsage() : printTestUsage();
@@ -166,6 +187,60 @@ void test(const std::vector<std::string>& args) {
         std::cout << "--------";
       }
       std::cout << "  ";
+    };
+
+    std::shared_ptr<const Dictionary> dict = fasttext.getDictionary();
+    for (int32_t labelId = 0; labelId < dict->nlabels(); labelId++) {
+      writeMetric("F1-Score", meter.f1Score(labelId));
+      writeMetric("Precision", meter.precision(labelId));
+      writeMetric("Recall", meter.recall(labelId));
+      std::cout << " " << dict->getLabel(labelId) << std::endl;
+    }
+  }
+  meter.writeGeneralMetrics(std::cout, k);
+
+  exit(0);
+}
+
+void testMaxIntention(const std::vector<std::string>& args) {
+  bool perLabel = args[1] == "test-label-max-intention";
+
+  if (args.size() < 4 || args.size() > 6) {
+    perLabel ? printTestLabelMaxIntentionUsage() : printTestMaxIntentionUsage();
+    exit(EXIT_FAILURE);
+  }
+
+  const auto& model = args[2];
+  const auto& input = args[3];
+  int32_t k = args.size() > 4 ? std::stoi(args[4]) : 1;
+  real threshold = args.size() > 5 ? std::stof(args[5]) : 0.0;
+
+  FastText fasttext;
+  fasttext.loadModel(model);
+
+  Meter meter;
+
+  if (input == "-") {
+    fasttext.testMaxIntention(std::cin, k, threshold, meter);
+  } else {
+    std::ifstream ifs(input);
+    if (!ifs.is_open()) {
+      std::cerr << "Test file cannot be opened!" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    fasttext.test(ifs, k, threshold, meter);
+  }
+
+  if (perLabel) {
+    std::cout << std::fixed << std::setprecision(6);
+    auto writeMetric = [](const std::string& name, double value) {
+        std::cout << name << " : ";
+        if (std::isfinite(value)) {
+          std::cout << value;
+        } else {
+          std::cout << "--------";
+        }
+        std::cout << "  ";
     };
 
     std::shared_ptr<const Dictionary> dict = fasttext.getDictionary();
@@ -448,8 +523,10 @@ int main(int argc, char** argv) {
   std::string command(args[1]);
   if (command == "skipgram" || command == "cbow" || command == "supervised") {
     train(args);
-  } else if (command == "test" || command == "test-label" || command == "test-max-intention") {
+  } else if (command == "test" || command == "test-label") {
     test(args);
+  } else if (command == "test-max-intention" || command == "test-label-max-intention") {
+    testMaxIntention(args);
   } else if (command == "quantize") {
     quantize(args);
   } else if (command == "print-word-vectors") {

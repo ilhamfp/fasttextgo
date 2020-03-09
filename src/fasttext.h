@@ -117,6 +117,8 @@ class FastText {
 
   void test(std::istream& in, int32_t k, real threshold, Meter& meter) const;
 
+  void testMaxIntention(std::istream& in, Meter& meter) const;
+
   void predict(
       int32_t k,
       const std::vector<int32_t>& words,
@@ -132,6 +134,10 @@ class FastText {
   void predictMaxIntention(
       const std::vector<int32_t>& words,
       IntentionPredictions& predictions) const;
+
+  void predictMaxIntention(
+    const std::vector<int32_t>& words,
+    Predictions& predictions) const;
 
   bool predictLineMaxIntention(
       std::istream& in,
