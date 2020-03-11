@@ -11,6 +11,7 @@
 #include <queue>
 #include <stdexcept>
 #include "args.h"
+#include "autotune.h"
 #include "fasttext.h"
 
 using namespace fasttext;
@@ -19,23 +20,23 @@ void printUsage() {
   std::cerr
       << "usage: fasttext <command> <args>\n\n"
       << "The commands supported by fasttext are:\n\n"
-      << "  supervised              train a supervised classifier\n"
-      << "  quantize                quantize a model to reduce the memory usage\n"
-      << "  test                    evaluate a supervised classifier\n"
-      << "  test-label              print labels with precision and recall scores\n"
-      << "  test-max                evaluate a supervised classifier\n"
-      << "  test-label-max          print labels with precision and recall scores\n"
-      << "  predict                 predict most likely labels\n"
-      << "  predict-prob            predict most likely labels with probabilities\n"
-      << "  predict-max-intention   predict most likely intentions at each level\n"
-      << "  skipgram                train a skipgram model\n"
-      << "  cbow                    train a cbow model\n"
-      << "  print-word-vectors      print word vectors given a trained model\n"
-      << "  print-sentence-vectors  print sentence vectors given a trained model\n"
-      << "  print-ngrams            print ngrams given a trained model and word\n"
-      << "  nn                      query for nearest neighbors\n"
-      << "  analogies               query for analogies\n"
-      << "  dump                    dump arguments,dictionary,input/output vectors\n"
+      << "  supervised                  train a supervised classifier\n"
+      << "  quantize                    quantize a model to reduce the memory usage\n"
+      << "  test                        evaluate a supervised classifier\n"
+      << "  test-label                  print labels with precision and recall scores\n"
+      << "  test-max-intention          evaluate a supervised classifier\n"
+      << "  test-label-max-intention    print labels with precision and recall scores\n"
+      << "  predict                     predict most likely labels\n"
+      << "  predict-prob                predict most likely labels with probabilities\n"
+      << "  predict-max-intention       predict most likely intentions at each level\n"
+      << "  skipgram                    train a skipgram model\n"
+      << "  cbow                        train a cbow model\n"
+      << "  print-word-vectors          print word vectors given a trained model\n"
+      << "  print-sentence-vectors      print sentence vectors given a trained model\n"
+      << "  print-ngrams                print ngrams given a trained model and word\n"
+      << "  nn                          query for nearest neighbors\n"
+      << "  analogies                   query for analogies\n"
+      << "  dump                        dump arguments,dictionary,input/output vectors\n"
       << std::endl;
 }
 
@@ -218,29 +219,35 @@ void testMaxIntention(const std::vector<std::string>& args) {
   FastText fasttext;
   fasttext.loadModel(model);
 
+  if (fasttext.getArgs().loss != loss_name::intentionhs) {
+    std::cerr << "predict max intention can only be applied on models trained on intention hierarchical softmax model"
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   Meter meter;
 
   if (input == "-") {
-    fasttext.testMaxIntention(std::cin, k, threshold, meter);
+    fasttext.testMaxIntention(std::cin, meter);
   } else {
     std::ifstream ifs(input);
     if (!ifs.is_open()) {
       std::cerr << "Test file cannot be opened!" << std::endl;
       exit(EXIT_FAILURE);
     }
-    fasttext.test(ifs, k, threshold, meter);
+    fasttext.testMaxIntention(ifs, meter);
   }
 
   if (perLabel) {
     std::cout << std::fixed << std::setprecision(6);
     auto writeMetric = [](const std::string& name, double value) {
-        std::cout << name << " : ";
-        if (std::isfinite(value)) {
-          std::cout << value;
-        } else {
-          std::cout << "--------";
-        }
-        std::cout << "  ";
+      std::cout << name << " : ";
+      if (std::isfinite(value)) {
+        std::cout << value;
+      } else {
+        std::cout << "--------";
+      }
+      std::cout << "  ";
     };
 
     std::shared_ptr<const Dictionary> dict = fasttext.getDictionary();
@@ -465,19 +472,31 @@ void analogies(const std::vector<std::string> args) {
 void train(const std::vector<std::string> args) {
   Args a = Args();
   a.parseArgs(args);
-  FastText fasttext;
-  std::string outputFileName(a.output + ".bin");
+  std::shared_ptr<FastText> fasttext = std::make_shared<FastText>();
+  std::string outputFileName;
+
+  if (a.hasAutotune() &&
+      a.getAutotuneModelSize() != Args::kUnlimitedModelSize) {
+    outputFileName = a.output + ".ftz";
+  } else {
+    outputFileName = a.output + ".bin";
+  }
   std::ofstream ofs(outputFileName);
   if (!ofs.is_open()) {
     throw std::invalid_argument(
         outputFileName + " cannot be opened for saving.");
   }
   ofs.close();
-  fasttext.train(a);
-  fasttext.saveModel(outputFileName);
-  fasttext.saveVectors(a.output + ".vec");
+  if (a.hasAutotune()) {
+    Autotune autotune(fasttext);
+    autotune.train(a);
+  } else {
+    fasttext->train(a);
+  }
+  fasttext->saveModel(outputFileName);
+  fasttext->saveVectors(a.output + ".vec");
   if (a.saveOutput) {
-    fasttext.saveOutput(a.output + ".output");
+    fasttext->saveOutput(a.output + ".output");
   }
 }
 

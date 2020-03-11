@@ -521,7 +521,6 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     codes_.push_back(code);
   }
   level_ = level;
-  std::cerr << "Number of nodes:  " << tree_.size() << std::endl;
 }
 
 real IntentionHierarchicalSoftmaxLoss::forward(

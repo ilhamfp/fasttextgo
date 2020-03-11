@@ -8,12 +8,10 @@
 
 #include "densematrix.h"
 
-#include <exception>
 #include <random>
 #include <stdexcept>
+#include <thread>
 #include <utility>
-#include <iostream>
-
 #include "utils.h"
 #include "vector.h"
 
@@ -26,15 +24,31 @@ DenseMatrix::DenseMatrix(int64_t m, int64_t n) : Matrix(m, n), data_(m * n) {}
 DenseMatrix::DenseMatrix(DenseMatrix&& other) noexcept
     : Matrix(other.m_, other.n_), data_(std::move(other.data_)) {}
 
+DenseMatrix::DenseMatrix(int64_t m, int64_t n, real* dataPtr)
+    : Matrix(m, n), data_(dataPtr, dataPtr + (m * n)) {}
+
 void DenseMatrix::zero() {
   std::fill(data_.begin(), data_.end(), 0.0);
 }
 
-void DenseMatrix::uniform(real a) {
-  std::minstd_rand rng(1);
+void DenseMatrix::uniformThread(real a, int block, int32_t seed) {
+  std::minstd_rand rng(block + seed);
   std::uniform_real_distribution<> uniform(-a, a);
-  for (int64_t i = 0; i < (m_ * n_); i++) {
+  int64_t blockSize = (m_ * n_) / 10;
+  for (int64_t i = blockSize * block;
+       i < (m_ * n_) && i < blockSize * (block + 1);
+       i++) {
     data_[i] = uniform(rng);
+  }
+}
+
+void DenseMatrix::uniform(real a, unsigned int thread, int32_t seed) {
+  std::vector<std::thread> threads;
+  for (int i = 0; i < thread; i++) {
+    threads.push_back(std::thread([=]() { uniformThread(a, i, seed); }));
+  }
+  for (int32_t i = 0; i < threads.size(); i++) {
+    threads[i].join();
   }
 }
 
@@ -87,7 +101,6 @@ void DenseMatrix::l2NormRow(Vector& norms) const {
 }
 
 real DenseMatrix::dotRow(const Vector& vec, int64_t i) const {
-//  std::cerr << i << std::endl;
   assert(i >= 0);
   assert(i < m_);
   assert(vec.size() == n_);
@@ -96,7 +109,7 @@ real DenseMatrix::dotRow(const Vector& vec, int64_t i) const {
     d += at(i, j) * vec[j];
   }
   if (std::isnan(d)) {
-    throw std::runtime_error("Encountered NaN.");
+    throw EncounteredNaNError();
   }
   return d;
 }
@@ -114,7 +127,7 @@ void DenseMatrix::addRowToVector(Vector& x, int32_t i) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  for (int64_t j = 0; j < this->size(1); j++) {
+  for (int64_t j = 0; j < n_; j++) {
     x[j] += at(i, j);
   }
 }
@@ -123,7 +136,7 @@ void DenseMatrix::addRowToVector(Vector& x, int32_t i, real a) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  for (int64_t j = 0; j < this->size(1); j++) {
+  for (int64_t j = 0; j < n_; j++) {
     x[j] += a * at(i, j);
   }
 }
