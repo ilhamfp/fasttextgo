@@ -57,6 +57,7 @@ class Meter {
   double precision() const;
   double recall() const;
   double f1Score() const;
+  double avgF1Score();
   uint64_t nexamples() const {
     return nexamples_;
   }

@@ -94,6 +94,8 @@ std::string Args::metricToString(metric_name mn) const {
       return "f1score";
     case metric_name::labelf1score:
       return "labelf1score";
+    case metric_name::avgf1score:
+      return "avgf1score";
   }
   return "Unknown metric name!"; // should never happen
 }
@@ -392,6 +394,8 @@ metric_name Args::getAutotuneMetric() const {
     return metric_name::labelf1score;
   } else if (autotuneMetric == "f1") {
     return metric_name::f1score;
+  } else if (autotuneMetric == "avgf1") {
+    return metric_name::avgf1score;
   }
   throw std::runtime_error("Unknown metric : " + autotuneMetric);
 }

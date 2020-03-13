@@ -288,6 +288,8 @@ double Autotune::getMetricScore(
     }
     labelId = labelId - fastText_->getDictionary()->nwords();
     score = meter.f1Score(labelId);
+  } else if (metricName == metric_name::avgf1score) {
+    score = meter.avgF1Score();
   } else {
     throw std::runtime_error("Unknown metric");
   }

@@ -70,6 +70,18 @@ double Meter::f1Score() const {
   return std::numeric_limits<double>::quiet_NaN();
 }
 
+double Meter::avgF1Score() {
+  double totalF1Score;
+  for (int32_t i = 0; i < labelMetrics_.size(); i++) {
+    double currF1score = f1Score(i);
+    if (std::isnan(currF1score)) {
+      continue;
+    }
+    totalF1Score += currF1score;
+  }
+  return totalF1Score / labelMetrics_.size();
+}
+
 void Meter::writeGeneralMetrics(std::ostream& out, int32_t k) const {
   out << "N"
       << "\t" << nexamples_ << std::endl;
