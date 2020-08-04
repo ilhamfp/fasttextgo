@@ -69,6 +69,14 @@ class BinaryLogisticLoss : public Loss {
       real lr,
       bool backprop) const;
 
+  real binaryLogisticBalanced(
+      int32_t target,
+      Model::State& state,
+      bool labelIsPositive,
+      real lr,
+      bool backprop,
+      real weight) const;
+
  public:
   explicit BinaryLogisticLoss(std::shared_ptr<Matrix>& wo);
   virtual ~BinaryLogisticLoss() noexcept override = default;
@@ -169,6 +177,7 @@ class IntentionHierarchicalSoftmaxLoss : public BinaryLogisticLoss {
   typedef std::pair<int32_t, real> Prediction;
 
   std::vector<std::vector<int32_t>> paths_;
+  std::vector<real> weights_;
   std::vector<std::vector<bool>> codes_;
   std::vector<Node> tree_;
   int32_t osz_;

@@ -132,6 +132,26 @@ real BinaryLogisticLoss::binaryLogistic(
   }
 }
 
+real BinaryLogisticLoss::binaryLogisticBalanced(
+    int32_t target,
+    Model::State& state,
+    bool labelIsPositive,
+    real lr,
+    bool backprop,
+    real weight) const {
+  real score = sigmoid(wo_->dotRow(state.hidden, target));
+  if (backprop) {
+    real alpha = lr * (weight * (real(labelIsPositive) - score));
+    state.grad.addRow(*wo_, target, alpha);
+    wo_->addVectorToRow(state.hidden, target, alpha);
+  }
+  if (labelIsPositive) {
+    return (weight * -log(score));
+  } else {
+    return (weight * -log(1.0 - score));
+  }
+}
+
 void BinaryLogisticLoss::computeOutput(Model::State& state) const {
   Vector& output = state.output;
   output.mul(*wo_, state.hidden);
@@ -490,6 +510,10 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
       nonLeaf = i;
     }
   }
+
+  // Hardcoded beta
+  real beta = 0.7;
+
   for (int32_t i = 0; i < osz_; i++) {
     std::vector<int32_t> path;
     std::vector<bool> code;
@@ -501,7 +525,19 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     }
     paths_.push_back(path);
     codes_.push_back(code);
+
+    weights_.push_back( real((1.0 - beta) / (1.0 - pow(beta, tree_[i].count))) );
   }
+
+  // Normalize weight
+  real sum_weights = 0.0;
+  for (int32_t i = 0; i < osz_; i++) { 
+    sum_weights += weights_[i];
+  }
+  for (int32_t i = 0; i < osz_; i++) { 
+    weights_[i] = (weights_[i] / sum_weights) * osz_;
+  }
+
   level_ = level;
 }
 
@@ -515,8 +551,9 @@ real IntentionHierarchicalSoftmaxLoss::forward(
   int32_t target = targets[targetIndex];
   const std::vector<bool>& binaryCode = codes_[target];
   const std::vector<int32_t>& pathToRoot = paths_[target];
+  real weight = weights_[target];
   for (int32_t i = 0; i < pathToRoot.size(); i++) {
-    loss += binaryLogistic(pathToRoot[i], state, binaryCode[i], lr, backprop);
+    loss += binaryLogisticBalanced(pathToRoot[i], state, binaryCode[i], lr, backprop, weight);
   }
   return loss;
 }
