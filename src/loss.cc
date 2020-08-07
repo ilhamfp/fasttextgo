@@ -613,6 +613,10 @@ void IntentionHierarchicalSoftmaxLoss::fixed_dfs(
   if (tree_[nodeId].left == -1 && tree_[nodeId].right == -1) {
     allPredictions.push_back(curPrediction);
     std::push_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
+    if (allPredictions.size() > 5) {
+      std::pop_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
+      allPredictions.pop_back();
+    }
     return;
   }
 
@@ -633,9 +637,10 @@ void IntentionHierarchicalSoftmaxLoss::maxPredict(
   Predictions curPrediction;
   std::vector<Predictions> allPredictions;
   fixed_dfs(nodeId, std_log(1.0), curPrediction, allPredictions, state.hidden);
+  std::sort_heap(allPredictions.begin(), allPredictions.end(), allPredictions);
 
   if(allPredictions.size() > 0){
-    Predictions bestPrediction = allPredictions.front();
+    Predictions bestPrediction = allPredictions[0];
     for (int32_t i = 0; i < bestPrediction.size(); i++) {
       predictions.push_back(std::make_pair(bestPrediction[i].first, tree_[bestPrediction[i].second].name.front()));
     }
