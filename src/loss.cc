@@ -637,7 +637,7 @@ void IntentionHierarchicalSoftmaxLoss::maxPredict(
   Predictions curPrediction;
   std::vector<Predictions> allPredictions;
   fixed_dfs(nodeId, std_log(1.0), curPrediction, allPredictions, state.hidden);
-  std::sort_heap(allPredictions.begin(), allPredictions.end(), allPredictions);
+  std::sort_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
 
   if(allPredictions.size() > 0){
     Predictions bestPrediction = allPredictions[0];
