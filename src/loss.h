@@ -198,6 +198,12 @@ class IntentionHierarchicalSoftmaxLoss : public BinaryLogisticLoss {
       Prediction* bestPred,
       const Vector& hidden,
       bool isRoot) const;
+  void fixed_dfs(
+      int32_t nodeId,
+      real score,
+      Predictions curPrediction,
+      std::vector<Predictions>& allPredictions,
+      const Vector& hidden) const;
   void loadTree(std::istream&);
 
 public:

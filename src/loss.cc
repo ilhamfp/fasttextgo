@@ -27,6 +27,12 @@ bool comparePairs(
   return l.first > r.first;
 }
 
+bool compareIntentionPredictionsPairs(
+    const std::vector<std::pair<real, int32_t>>& l,
+    const std::vector<std::pair<real, int32_t>>& r) {
+  return l[l.size()-1].first > r[r.size()-1].first;
+}
+
 real std_log(real x) {
   return std::log(x + 1e-5);
 }
@@ -512,7 +518,7 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
   }
 
   // Hardcoded beta
-  real beta = 0.7;
+  real beta = 0.9999;
 
   for (int32_t i = 0; i < osz_; i++) {
     std::vector<int32_t> path;
@@ -592,22 +598,47 @@ void IntentionHierarchicalSoftmaxLoss::max_dfs(
   max_dfs(node.right, score + std_log(f), level, bestPred, hidden, false);
 }
 
+void IntentionHierarchicalSoftmaxLoss::fixed_dfs(
+        int32_t nodeId,
+        real score,
+        Predictions curPrediction,
+        std::vector<Predictions>& allPredictions,
+        const Vector& hidden) const {
+  if (allPredictions.size() > 0 && score < (allPredictions.front().back().first-0.1)) {
+    return;
+  }
+  if(tree_[nodeId].isLabel){
+    curPrediction.push_back(std::make_pair(score, nodeId));
+  }
+  if (tree_[nodeId].left == -1 && tree_[nodeId].right == -1) {
+    allPredictions.push_back(curPrediction);
+    std::push_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
+    return;
+  }
+
+  real f = wo_->dotRow(hidden, nodeId - osz_);
+  f = 1. / (1 + std::exp(-f));
+
+  fixed_dfs(tree_[nodeId].left, score + std_log(1.0 - f), curPrediction, allPredictions, hidden);
+  fixed_dfs(tree_[nodeId].right, score + std_log(f), curPrediction, allPredictions, hidden);
+}
+
+
 void IntentionHierarchicalSoftmaxLoss::maxPredict(
         IntentionPredictions& predictions,
         Model::State& state) const {
+
   int32_t level = level_;
   int32_t nodeId = 2*osz_-2;
-  real score = 0;
-  Prediction prediction = std::make_pair(-1, -1e15);
-  while (level != -1) {
-    prediction.second = -1e15;
-    max_dfs(nodeId, std_log(1.0), level, &prediction, state.hidden, true);
-    nodeId = prediction.first;
-    score = score + prediction.second;
-    for (int32_t i = tree_[nodeId].name.size()-1; i >= 0; i--) {
-      predictions.push_back(std::make_pair(score, tree_[nodeId].name[i]));
+  Predictions curPrediction;
+  std::vector<Predictions> allPredictions;
+  fixed_dfs(nodeId, std_log(1.0), curPrediction, allPredictions, state.hidden);
+
+  if(allPredictions.size() > 0){
+    Predictions bestPrediction = allPredictions.front();
+    for (int32_t i = 0; i < bestPrediction.size(); i++) {
+      predictions.push_back(std::make_pair(bestPrediction[i].first, tree_[bestPrediction[i].second].name.front()));
     }
-    level = std::min(level-1, tree_[nodeId].slevel);
   }
 }
 
