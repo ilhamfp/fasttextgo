@@ -604,9 +604,6 @@ void IntentionHierarchicalSoftmaxLoss::fixed_dfs(
         Predictions curPrediction,
         std::vector<Predictions>& allPredictions,
         const Vector& hidden) const {
-  if (allPredictions.size() > 0 && score < (allPredictions.front().back().first-std_log(0.1))) {
-    return;
-  }
   if(tree_[nodeId].isLabel){
     curPrediction.push_back(std::make_pair(score, nodeId));
   }
