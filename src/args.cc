@@ -17,6 +17,7 @@ namespace fasttext {
 
 Args::Args() {
   lr = 0.05;
+  beta = 0.9999;
   dim = 100;
   ws = 5;
   epoch = 5;
@@ -89,6 +90,7 @@ void Args::parseArgs(const std::vector<std::string>& args) {
     minn = 0;
     maxn = 0;
     lr = 0.1;
+    beta = 0.9999;
   } else if (command == "cbow") {
     model = model_name::cbow;
   }
@@ -109,6 +111,8 @@ void Args::parseArgs(const std::vector<std::string>& args) {
         output = std::string(args.at(ai + 1));
       } else if (args[ai] == "-lr") {
         lr = std::stof(args.at(ai + 1));
+      } else if (args[ai] == "-beta") {
+        beta = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-lrUpdateRate") {
         lrUpdateRate = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-dim") {
@@ -233,6 +237,7 @@ void Args::printTrainingHelp() {
   std::cerr
       << "\nThe following arguments for training are optional:\n"
       << "  -lr                 learning rate [" << lr << "]\n"
+      << "  -beta               class-balanced loss beta [" << lr << "]\n"
       << "  -lrUpdateRate       change the rate of updates for the learning rate ["
       << lrUpdateRate << "]\n"
       << "  -dim                size of word vectors [" << dim << "]\n"

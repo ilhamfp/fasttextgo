@@ -44,7 +44,7 @@ std::shared_ptr<Loss> FastText::createLoss(std::shared_ptr<Matrix>& output) {
       return std::make_shared<OneVsAllLoss>(output);
     case loss_name::intentionhs:
       return std::make_shared<IntentionHierarchicalSoftmaxLoss>(
-              output, dict_->getLabelCounts(), args_->hfiles);
+              output, dict_->getLabelCounts(), args_->hfiles, args_->beta);
     default:
       throw std::runtime_error("Unknown loss");
   }

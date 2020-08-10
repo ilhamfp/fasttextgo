@@ -347,14 +347,15 @@ void HierarchicalSoftmaxLoss::dfs(
 IntentionHierarchicalSoftmaxLoss::IntentionHierarchicalSoftmaxLoss(
     std::shared_ptr<Matrix>& wo,
     const std::vector<std::pair<std::string, int64_t>>& labelCounts,
-    std::string hfiles)
+    std::string hfiles,
+    const double beta)
     : BinaryLogisticLoss(wo),
       paths_(),
       codes_(),
       tree_(),
       level_(),
       osz_(labelCounts.size()) {
-  buildTree(labelCounts, hfiles);
+  buildTree(labelCounts, hfiles, beta);
 }
 
 IntentionHierarchicalSoftmaxLoss::IntentionHierarchicalSoftmaxLoss(
@@ -415,7 +416,7 @@ IntentionHierarchicalSoftmaxLoss::Node IntentionHierarchicalSoftmaxLoss::buildSu
 }
 
 void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std::string, int64_t>>& labelCounts,
-        const std::string hfiles) {
+        const std::string hfiles, const double beta) {
   std::unordered_map<std::string, Node> prev_mapping;
   for (int32_t i = 0; i < osz_; i++) {
     const std::string& label = labelCounts[i].first;
@@ -517,9 +518,6 @@ void IntentionHierarchicalSoftmaxLoss::buildTree(const std::vector<std::pair<std
     }
   }
 
-  // Hardcoded beta
-  real beta = 0.9999;
-
   for (int32_t i = 0; i < osz_; i++) {
     std::vector<int32_t> path;
     std::vector<bool> code;
@@ -610,7 +608,7 @@ void IntentionHierarchicalSoftmaxLoss::fixed_dfs(
   if (tree_[nodeId].left == -1 && tree_[nodeId].right == -1) {
     allPredictions.push_back(curPrediction);
     std::push_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
-    if (allPredictions.size() > 5) {
+    if (allPredictions.size() > 3) {
       std::pop_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
       allPredictions.pop_back();
     }

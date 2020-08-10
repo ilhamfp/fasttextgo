@@ -183,7 +183,7 @@ class IntentionHierarchicalSoftmaxLoss : public BinaryLogisticLoss {
   int32_t osz_;
   int32_t level_;
   Node buildSubTree(std::vector<Node*>& nodes, int32_t level);
-  void buildTree(const std::vector<std::pair<std::string, int64_t>>& labelCounts, const std::string hfiles);
+  void buildTree(const std::vector<std::pair<std::string, int64_t>>& labelCounts, const std::string hfiles, const double beta);
   void dfs(
       int32_t k,
       real threshold,
@@ -210,7 +210,8 @@ public:
   explicit IntentionHierarchicalSoftmaxLoss(
       std::shared_ptr<Matrix>& wo,
       const std::vector<std::pair<std::string, int64_t>>& labelCounts,
-      std::string hfiles);
+      std::string hfiles,
+      const double beta);
   explicit IntentionHierarchicalSoftmaxLoss(
       std::shared_ptr<Matrix>& wo,
       std::istream& in);

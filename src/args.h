@@ -30,6 +30,7 @@ class Args {
   std::string output;
   std::string hfiles;
   double lr;
+  double beta;
   int lrUpdateRate;
   int dim;
   int ws;
