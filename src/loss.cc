@@ -641,7 +641,7 @@ void IntentionHierarchicalSoftmaxLoss::maxPredict(
       Predictions curPrediction = allPredictions[i];
       for (int j = 0; j < curPrediction.size(); j++)
       {
-        result += std::to_string(curPrediction[j].first) + "|" + tree_[curPrediction[j].second].name.front(); + "~";
+        result += std::to_string(curPrediction[j].first) + "|" + tree_[curPrediction[j].second].name.front() + "~";
       }
       predictions.push_back(std::make_pair((real)i, result));
     }
