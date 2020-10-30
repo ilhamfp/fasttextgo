@@ -626,19 +626,19 @@ void IntentionHierarchicalSoftmaxLoss::fixed_dfs(
 void IntentionHierarchicalSoftmaxLoss::maxPredict(
         IntentionPredictions& predictions,
         Model::State& state) const {
-
   int32_t level = level_;
   int32_t nodeId = 2*osz_-2;
-  Predictions curPrediction;
-  std::vector<Predictions> allPredictions;
-  fixed_dfs(nodeId, std_log(1.0), curPrediction, allPredictions, state.hidden);
-  std::sort_heap(allPredictions.begin(), allPredictions.end(), compareIntentionPredictionsPairs);
-
-  if(allPredictions.size() > 0){
-    Predictions bestPrediction = allPredictions[0];
-    for (int32_t i = 0; i < bestPrediction.size(); i++) {
-      predictions.push_back(std::make_pair(bestPrediction[i].first, tree_[bestPrediction[i].second].name.front()));
+  real score = 0;
+  Prediction prediction = std::make_pair(-1, -1e15);
+  while (level != -1) {
+    prediction.second = -1e15;
+    max_dfs(nodeId, std_log(1.0), level, &prediction, state.hidden, true);
+    nodeId = prediction.first;
+    score = score + prediction.second;
+    for (int32_t i = tree_[nodeId].name.size()-1; i >= 0; i--) {
+      predictions.push_back(std::make_pair(score, tree_[nodeId].name[i]));
     }
+    level = std::min(level-1, tree_[nodeId].slevel);
   }
 }
 
