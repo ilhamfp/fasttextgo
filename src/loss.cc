@@ -557,7 +557,7 @@ real IntentionHierarchicalSoftmaxLoss::forward(
   const std::vector<int32_t>& pathToRoot = paths_[target];
   real weight = weights_[target];
   for (int32_t i = 0; i < pathToRoot.size(); i++) {
-    loss += binaryLogisticBalanced(pathToRoot[i], state, binaryCode[i], lr, backprop, weight);
+    loss += binaryLogistic(pathToRoot[i], state, binaryCode[i], lr, backprop);
   }
   return loss;
 }
